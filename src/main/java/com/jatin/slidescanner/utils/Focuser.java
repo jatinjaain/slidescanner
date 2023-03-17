@@ -1,16 +1,17 @@
 package com.jatin.slidescanner.utils;
 
-import com.jatin.slidescanner.controllers.ScanningController;
 import com.jatin.slidescanner.enums.MachineState;
 import com.jatin.slidescanner.models.UserState;
 import com.jatin.slidescanner.services.ScanningService;
-import com.jatin.slidescanner.services.ScanningServiceImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
 public class Focuser extends Thread{
+    Logger logger = LoggerFactory.getLogger(Focuser.class);
     int delay = 3000;
     Integer[] positionForFocus = null;
     List<Integer[]> alreadyFocused = new ArrayList<>();
@@ -55,9 +56,9 @@ public class Focuser extends Thread{
             }
 
             scanningService.setMachineState(MachineState.FOCUSING);
-            System.out.println("Focus start");
+            logger.info("Focus start");
             Thread.sleep(delay);    // this is the actual process which takes 3 seconds
-            System.out.println("Focus end");
+            logger.info("Focus end");
 
             alreadyFocused.add(positionForFocus);
             userState.setCurrFocus(new Integer[]{});
@@ -65,8 +66,11 @@ public class Focuser extends Thread{
 
             binary.release();
         }
+        catch (InterruptedException e){
+            logger.error("problem while calling Thread.sleep(), error"+e);
+        }
         catch (Exception e){
-            System.out.println("error "+e);
+            logger.error("Exception: "+e);
         }
     }
 

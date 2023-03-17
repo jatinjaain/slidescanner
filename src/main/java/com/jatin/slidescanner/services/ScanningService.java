@@ -7,7 +7,7 @@ import com.jatin.slidescanner.models.UserState;
 
 public interface ScanningService {
 
-    public Integer[] getOffset();
+    public Integer getOffset();
 
     public void addInput(String direction, ScanningController controller);
 

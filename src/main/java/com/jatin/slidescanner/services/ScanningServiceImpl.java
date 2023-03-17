@@ -5,18 +5,18 @@ import com.jatin.slidescanner.enums.MachineState;
 import com.jatin.slidescanner.models.UserState;
 import com.jatin.slidescanner.utils.Capturer;
 import com.jatin.slidescanner.utils.Focuser;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.Semaphore;
 
-//import static com.jatin.slidescanner.enums.MachineState.*;
 
 @Service
 public class ScanningServiceImpl implements ScanningService {
+
+    Logger logger = LoggerFactory.getLogger(ScanningServiceImpl.class);
 
     Integer rows = 20;
     Integer columns = 60;
@@ -24,26 +24,28 @@ public class ScanningServiceImpl implements ScanningService {
     ScanningController scanningController;
 
     MachineState machineState = MachineState.IDLE;
-    Integer[] initialPosition = new Integer[]{0,0};
-    Integer[] offset = new Integer[]{0,0};
-    UserState userState = new UserState();
+    Integer[] initialPosition = new Integer[]{rows/2,columns/2}; // initial position is 10,30
+    Integer[] offset = new Integer[]{0,0}; // current position
 
+    UserState userState = new UserState();
     ArrayDeque<Integer[]> inputQueue = new ArrayDeque<>();
     Semaphore binary = new Semaphore(1);
 
 
-    public Integer[] getOffset(){
-        return this.offset;
+    public Integer getOffset(){
+        // used to get current location from backend when the connection is first established
+        return (offset[0]+initialPosition[0])*60+(offset[1]+initialPosition[1]);
     }
+
 
     @Override
     public void addInput(String direction, ScanningController controller){
+        // takes input and the controller object and adds the direction to the input queue
+
         this.scanningController=controller;
 
-        if(direction.equals("")){
-            sendState();
-            return;
-        }
+
+        logger.info("Received "+direction);
 
         if(direction.equals("right")){
             inputQueue.add(new Integer[]{0, 1});
@@ -58,37 +60,39 @@ public class ScanningServiceImpl implements ScanningService {
             inputQueue.add(new Integer[]{-1, 0});
         }
 
-        System.out.println("added to input queue and size "+ inputQueue.size());
         if(machineState == MachineState.IDLE)
             updateOffset();
 
     }
 
     public void updateOffset() {
-        System.out.println("updating offset");
+
+        logger.info("Updating offset");
+
         while(inputQueue.size()>0){
 
             Integer[] currInput = inputQueue.removeFirst();
 
             offset[0] += currInput[0];
             offset[1] += currInput[1];
-            if(offset[0]<0){
-                offset[0]=rows-1;
+
+            // below is the code to handle the loop case,
+            // i.e. going to last row when up arrow key is pressed while on the first row and so on
+            if(offset[0]+initialPosition[0]<0){
+                offset[0]=rows-1-initialPosition[0];
             }
-            else if(offset[0]==rows){
-                offset[0]=0;
+            else if(offset[0]+initialPosition[0]==rows){
+                offset[0]=-1*initialPosition[0];
             }
-            if(offset[1]<0){
-                offset[0] = offset[0]==0 ? rows-1 : offset[0]-1;
-                offset[1] = columns-1;
+            if(offset[1]+initialPosition[1]<0){
+                offset[0] = offset[0]+initialPosition[0]==0 ? rows-1-initialPosition[0] : offset[0]-1;
+                offset[1] = columns-1-initialPosition[1];
             }
-            else if(offset[1]==columns){
-                offset[0]= offset[0]==rows-1 ? 0 : offset[0]+1;
-                offset[1] = 0;
+            else if(offset[1]+initialPosition[1]==columns){
+                offset[0]= offset[0]+initialPosition[0]==rows-1 ? -1*initialPosition[0] : offset[0]+1;
+                offset[1] = -1*initialPosition[1];
             }
         }
-//        System.out.println("offset "+ offset[0] +" "+offset[1]);
-
 
         reFocus();
 
@@ -125,37 +129,14 @@ public class ScanningServiceImpl implements ScanningService {
     }
 
     public void setMachineState(MachineState machineState){
+        // this is used to change machine state of service layer from Focuser util or Capturer util
         this.machineState=machineState;
     }
 
     public void sendState(){
-        scanningController.updateUserState();
+        // this calls the send user state method of the controller layer, to send the current user state to the client
+        // this is used by the Focuser util or Capturer util to send user state after every change in user state
+        scanningController.sendUserState();
     }
-
-
-    // trial to test web socket
-//    public void addInput(String direction, ScanningController controller){
-//        scanningController = controller;
-//        userState.setCurrFocus(new Integer[]{2,4});
-//        sendState();
-//        try {
-//            Thread.sleep(3000); // focus
-//        }
-//        catch (Exception e){
-//
-//        }
-//        userState.setCurrFocus(new Integer[]{});
-//        userState.setCurrCapture(new Integer[]{2,4});
-//        sendState();
-//        // for testing
-//        try {
-//            Thread.sleep(2000);
-//        }
-//        catch (Exception e){
-//
-//        }
-//        userState.setCurrCapture(new Integer[]{});
-//        sendState();
-//    }
 
 }

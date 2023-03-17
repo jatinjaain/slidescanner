@@ -3,18 +3,20 @@ package com.jatin.slidescanner.utils;
 import com.jatin.slidescanner.enums.MachineState;
 import com.jatin.slidescanner.models.UserState;
 import com.jatin.slidescanner.services.ScanningService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 
 public class Capturer extends Thread{
+
+    Logger logger = LoggerFactory.getLogger(Capturer.class);
     int delay = 2000;
     List<Integer[]> alreadyCaptured;
     ArrayDeque<Integer[]> inputQueue;
     Integer[] positionForCapture;
-
-//    Integer[] currFocus;
     Semaphore binary;
     MachineState state;
     UserState userState;
@@ -25,7 +27,6 @@ public class Capturer extends Thread{
         this.positionForCapture=positionForCapture;
         this.alreadyCaptured=userState.getAlreadyCaptured();
         this.inputQueue = inputQueue;
-//        this.currFocus=userState.getCurrFocus();
         this.binary = binary;
         this.state=state;
         this.scanningService=scanningService;
@@ -36,7 +37,7 @@ public class Capturer extends Thread{
         try {
             binary.acquire();
             if(inputQueue.size()!=0){
-                System.out.println(" focus is done but not capturing because input queue is having this much moves " + inputQueue.size());
+                //focus is done but not capturing because input queue is having moves
                 binary.release();
                 scanningService.updateOffset();
                 return;
@@ -61,9 +62,9 @@ public class Capturer extends Thread{
             scanningService.sendState();
 
 
-            System.out.println("capture start");
+            logger.info("Capture start");
             Thread.sleep(delay);    // this is the actual process which takes 2 seconds
-            System.out.println("capture end");
+            logger.info("capture end");
 
             alreadyCaptured.add(positionForCapture);
             userState.setCurrCapture(new Integer[]{});
@@ -71,7 +72,7 @@ public class Capturer extends Thread{
 
 
             if(inputQueue.size()!=0){
-                System.out.println(" capturing is done but input queue is having this much moves " + inputQueue.size());
+                //capturing is done but input queue is having moves
                 binary.release();
                 scanningService.setMachineState(MachineState.IDLE);
                 scanningService.updateOffset();
@@ -81,8 +82,11 @@ public class Capturer extends Thread{
 
             binary.release();
         }
+        catch (InterruptedException e){
+            logger.error("problem while calling Thread.sleep(), error"+e);
+        }
         catch (Exception e){
-            System.out.println("error "+e);
+            logger.error("Exception: "+e);
         }
     }
 }

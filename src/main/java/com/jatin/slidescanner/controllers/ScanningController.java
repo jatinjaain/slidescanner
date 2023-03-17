@@ -2,24 +2,21 @@ package com.jatin.slidescanner.controllers;
 
 import com.jatin.slidescanner.models.UserState;
 import com.jatin.slidescanner.services.ScanningService;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.handler.annotation.SendTo;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @CrossOrigin("http://localhost:3000")
 public class ScanningController {
 
-//    LoggerFactory loggerFactory = new Logger
+    Logger logger = LoggerFactory.getLogger(ScanningController.class);
 
     @Autowired
     private ScanningService scanningService;
@@ -27,31 +24,41 @@ public class ScanningController {
     @Autowired
     private SimpMessagingTemplate simpMessagingTemplate;
 
+
     @MessageMapping("/addMove")
     public void addMove(@Payload String move){
-        if(move.equals("getState")){
-            updateUserState();
-            return;
+        try{
+            if(move.equals("getState")){    // this is used to get the UserState when the connection is re established
+                logger.info("Client wants current user state");
+                sendUserState();
+                return;
+            }
+            scanningService.addInput(move, this);
         }
-        System.out.println("received"+move);
-        scanningService.addInput(move, this);
-        return;
+        catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
-    public UserState updateUserState(){
-        System.out.print("sending data ");
-        UserState userState = scanningService.getUserState();
-        System.out.println(userState);
-        simpMessagingTemplate.convertAndSend("/userState/update", userState);
-        return userState;
+    public UserState sendUserState(){
+        try {
+            logger.info("Sending userState to client because userState changed");
+            UserState userState = scanningService.getUserState();
+            simpMessagingTemplate.convertAndSend("/userState/update", userState);
+            return userState;
+        }
+        catch (Exception e){
+            e.printStackTrace();
+            return new UserState();
+        }
     }
 
     @MessageMapping("/getOffset")
     @SendTo("/userState/offset")
     public Integer getCurrPosition(){
-        System.out.println("client wants curr position");
-        Integer[] offset = scanningService.getOffset();
-        return offset[0]*60+offset[1];
+        // used to get current location from backend when the connection is re established
+        logger.info("Client wants current position");
+        return scanningService.getOffset();
     }
 
 

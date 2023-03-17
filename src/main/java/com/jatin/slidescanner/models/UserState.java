@@ -6,10 +6,10 @@ import java.util.List;
 
 public class UserState {
 
-    Integer[] currFocus = new Integer[]{};
-    Integer[] currCapture = new Integer[]{};
-    List<Integer[]> alreadyFocused = new ArrayList<>();
-    List<Integer[]> alreadyCaptured = new ArrayList<>();
+    Integer[] currFocus = new Integer[]{}; // this is the point that is undergoing focus
+    Integer[] currCapture = new Integer[]{}; // this is the point that is undergoing capture
+    List<Integer[]> alreadyFocused = new ArrayList<>(); // contains all the already focused points
+    List<Integer[]> alreadyCaptured = new ArrayList<>(); // contains all the already captured points
 
     public UserState() {
     }
